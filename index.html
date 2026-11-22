@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="VRMのポーズとモーションをブラウザーで作成。編集用JSONとVRM Animationに保存できます。">
+  <title>VRM Motion Studio</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div><h1>VRM Motion Studio</h1><p>ポーズ &amp; モーションエディター</p></div>
+    </div>
+    <div class="file-actions">
+      <button id="open-project" type="button">編集ファイルを開く</button>
+      <button id="save-project" type="button">編集用JSONを保存</button>
+      <button id="export" class="accent" type="button">VRMAを書き出す</button>
+    </div>
+    <input id="project-file" type="file" accept=".json,application/json" hidden>
+  </header>
+
+  <main class="studio">
+    <aside class="assets panel" aria-labelledby="model-title">
+      <h2 id="model-title">モデル</h2>
+      <div class="model-card">
+        <span class="model-kind" id="model-kind">DEMO</span>
+        <strong id="model-name">練習用モデル</strong>
+      </div>
+      <button id="open-model" class="upload" type="button">VRMを読み込む</button>
+      <input id="model-file" type="file" accept=".vrm" hidden>
+      <p class="hint file-hint">VRM 0.x / 1.0 · 端末内で処理</p>
+
+      <h2 class="part-title">動かす部位</h2>
+      <div id="part-list"></div>
+    </aside>
+
+    <section class="stage panel" aria-labelledby="preview-title">
+      <div class="stage-top">
+        <h2 id="preview-title">3Dプレビュー</h2>
+        <div class="views" role="group" aria-label="カメラの向き">
+          <button data-view="front" type="button">正面</button>
+          <button data-view="side" type="button">横</button>
+          <button data-view="angle" type="button" aria-pressed="true">斜め</button>
+        </div>
+      </div>
+      <div id="viewport">
+        <div id="markers" aria-label="関節の位置"></div>
+        <p id="preview-fallback" hidden>3D表示にはWebGLが必要です。</p>
+      </div>
+      <div class="stage-bottom"><span><i aria-hidden="true"></i>関節の点をドラッグで調整</span><span>空白をドラッグで視点移動</span></div>
+    </section>
+
+    <aside class="inspector panel" aria-labelledby="inspector-title">
+      <h2 id="inspector-title">ポーズ調整</h2>
+      <div class="joint-title"><span>選択中の部位</span><strong id="joint-name">右ひじ</strong></div>
+      <fieldset id="pose-controls"><legend class="sr-only">関節と腰の調整</legend>
+        <div id="axes">
+          <label data-axis="0"><span class="axis-name"><b>X</b> 前後</span><output>0°</output><input type="range" min="-180" max="180" step="1" value="0" aria-label="前後の角度 X"></label>
+          <label data-axis="1"><span class="axis-name"><b>Y</b> ひねり</span><output>0°</output><input type="range" min="-180" max="180" step="1" value="0" aria-label="ひねりの角度 Y"></label>
+          <label data-axis="2"><span class="axis-name"><b>Z</b> 左右</span><output>0°</output><input type="range" min="-180" max="180" step="1" value="0" aria-label="左右の角度 Z"></label>
+        </div>
+        <button id="reset-joint" class="small" type="button">この関節をリセット</button>
+        <label class="hip-label"><span>腰の上下</span><output id="hip-value">0%</output><input id="hip" type="range" min="-55" max="55" value="0" aria-label="腰の上下"></label>
+        <div class="presets" role="group" aria-label="ポーズの見本">
+          <button data-preset="stand" type="button">立ち</button>
+          <button data-preset="guard" type="button">構え</button>
+          <button data-preset="t" type="button">Tポーズ</button>
+        </div>
+      </fieldset>
+    </aside>
+
+    <section class="timeline panel" aria-labelledby="timeline-title">
+      <div class="timeline-top">
+        <div><h2 id="timeline-title">タイムライン</h2><p class="hint" id="timeline-hint">今のポーズをコピーして次のコマを作れます。</p></div>
+        <div class="timeline-actions">
+          <button id="play" type="button"><span aria-hidden="true">▶</span> 再生</button>
+          <label class="loop"><input id="loop" type="checkbox" checked> ループ</label>
+          <button id="add-frame" class="outline" type="button">＋ コマを追加</button>
+        </div>
+      </div>
+      <div class="timeline-track">
+        <div id="ticks" aria-hidden="true"></div>
+        <input id="scrub" type="range" min="0" max="1" step="0.01" value="0" aria-label="プレビューの再生位置">
+        <div id="frames" aria-label="ポーズのコマ"></div>
+      </div>
+      <div class="timeline-bottom">
+        <label for="frame-time">選択コマの時刻</label>
+        <div class="seconds"><input id="frame-time" type="number" min="0" step="0.05" value="0" disabled> 秒</div>
+        <button id="remove-frame" class="quiet" type="button" disabled>コマを削除</button>
+        <span id="play-time">0.00 秒</span>
+        <span id="frame-count">1 コマ</span>
+      </div>
+    </section>
+  </main>
+  <footer><p id="status" role="status">関節を選び、スライダーを動かしてみてください。</p><span>モデル本体は保存ファイルに含まれません</span></footer>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
