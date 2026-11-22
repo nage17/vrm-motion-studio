@@ -3,6 +3,7 @@ import { strToU8, zipSync } from 'three/addons/libs/fflate.module.js';
 import roster from './fighter-rigs.json' with { type: 'json' };
 import { projectType } from './project.js';
 import { exportVrma } from './vrma.js';
+import { applyHandShape } from './gestures.js';
 
 export const fighterCount = roster.length;
 
@@ -25,7 +26,14 @@ export async function exportFighters(frames, model) {
     'pose.motion.json': strToU8(JSON.stringify({ format: projectType, version: 1, model, frames }, null, 2)),
   };
   for (const fighter of roster) {
-    files[fighter.id + '.vrma'] = new Uint8Array(await exportVrma(makeRig(fighter), frames));
+    const rig = makeRig(fighter);
+    const fitted = frames.map(frame => {
+      if (!frame.pairedHands) return frame;
+      const angles = { ...frame.angles };
+      applyHandShape(angles, 'both', frame.pairedHands, rig);
+      return { ...frame, angles };
+    });
+    files[fighter.id + '.vrma'] = new Uint8Array(await exportVrma(rig, fitted));
   }
   return zipSync(files, { level: 6 });
 }

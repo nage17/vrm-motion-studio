@@ -1,4 +1,4 @@
-import { digits, expressions, sides } from './gestures.js';
+import { digits, expressions, isPairedShape, sides } from './gestures.js';
 
 export const parts = [
   { label: '体幹', bones: [['hips', '腰'], ['spine', '背中'], ['chest', '胸'], ['upperChest', '上胸'], ['neck', '首'], ['head', '頭']] },
@@ -64,6 +64,7 @@ export function readProject(json) {
       angles[bone] = values.slice();
     }
     const frame = { time, angles, hip: entry.hip };
+    if (isPairedShape(entry.pairedHands)) frame.pairedHands = entry.pairedHands;
     if (entry.expression !== undefined) {
       const { name, weight } = entry.expression ?? {};
       if (!Object.hasOwn(expressions, name) || !Number.isFinite(weight) || weight < 0 || weight > 1) {

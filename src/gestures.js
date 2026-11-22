@@ -1,4 +1,5 @@
 import { Euler, MathUtils, Quaternion } from 'three';
+import { posePairedHands } from './paired-hands.js';
 
 export const digits = [
   ['Thumb', '親指', ['Metacarpal', 'Proximal', 'Distal']],
@@ -23,8 +24,8 @@ export const handShapes = {
   money: ['お金の手', [0, 0, .04, .05, .06]],
   fox: ['コン', [.65, 0, .66, .66, 0]],
   spider: ['スパイダーストリングス', [0, 0, 1, 1, 0]],
-  circle: ['両手でまる', [.25, .24, .26, .28, .30]],
-  heart: ['両手でハート', [.18, .29, .42, .51, .56]],
+  circle: ['両手でまる', [.34, .12, .13, .14, .17]],
+  heart: ['両手でハート', [0, 0, .86, .92, .95]],
 };
 
 // Local joint angles for gestures whose thumb and index shape cannot be
@@ -36,6 +37,10 @@ const detailAngles = {
   },
   thumbsUp: {
     Thumb: [[-24, -48, 0], [0, -3, 2], [0, 1, 0]],
+  },
+  heart: {
+    Thumb: [[70, -5, -10], [0, -4, -9], [0, 0, -3]],
+    Index: [[0, -7, 8], [0, -3, -75], [0, 0, -40]],
   },
 };
 
@@ -71,13 +76,21 @@ function rollJoint(angles, name, roll) {
     .map(angle => Math.round(MathUtils.radToDeg(angle) * 10) / 10 || 0);
 }
 
-export function applyHandShape(angles, side, shape) {
-  if (shape !== 'circle' && shape !== 'heart') {
+export const isPairedShape = shape => shape === 'circle' || shape === 'heart';
+export const isPairedJoint = name => /^(left|right)(Shoulder|UpperArm|LowerArm|Hand|Thumb|Index|Middle|Ring|Little)/.test(name);
+
+export function applyHandShape(angles, side, shape, rig) {
+  if (!isPairedShape(shape)) {
     shapeHand(angles, side, shape);
     if (shape === 'money') {
       rollJoint(angles, side + 'LowerArm', 135);
       rollJoint(angles, side + 'Hand', 45);
     }
+    return;
+  }
+  if (rig) {
+    for (const hand of sides) shapeHand(angles, hand, shape);
+    posePairedHands(angles, shape, rig);
     return;
   }
   for (const hand of sides) {

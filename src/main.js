@@ -2,7 +2,7 @@ import './style.css';
 import { Viewport, loadModel } from './viewport.js';
 import { exportVrma } from './vrma.js';
 import { exportFighters, fighterCount } from './fighter-export.js';
-import { applyHandShape, expressions, handShapes } from './gestures.js';
+import { applyHandShape, expressions, handShapes, isPairedJoint, isPairedShape } from './gestures.js';
 import { parts, partNames, preset, readProject, surroundingFrames, projectType, maxFrames, maxTime, step, roundTime } from './project.js';
 
 const $ = id => document.getElementById(id);
@@ -29,6 +29,13 @@ try {
 
 const end = () => frames.at(-1).time;
 const selectedFrame = () => frames[current];
+
+function fitPairedHands() {
+  if (!viewport) return;
+  for (const frame of frames) {
+    if (frame.pairedHands) applyHandShape(frame.angles, 'both', frame.pairedHands, viewport.rig);
+  }
+}
 
 function renderParts() {
   const support = viewport ? viewport.rig.bones : partNames;
@@ -143,6 +150,7 @@ function selectBone(name) {
 
 function editRotation(bone, angles) {
   if (selected !== bone || playing || wasPreview) return;
+  if (isPairedJoint(bone)) delete selectedFrame().pairedHands;
   selectedFrame().angles[bone] = angles;
   renderInspector();
   applyPose();
@@ -175,6 +183,7 @@ async function useModel(file) {
   try {
     const model = await loadModel(file);
     viewport.setRig(model);
+    fitPairedHands();
     if (!model.bones[selected]) selected = 'hips';
     activeModel = model.metaName;
     $('model-name').textContent = model.metaName;
@@ -241,6 +250,7 @@ $('project-file').onchange = async event => {
     const project = readProject(await file.text());
     viewport?.cancelRotation();
     frames = project.frames;
+    fitPairedHands();
     chooseFrame(0);
     announce(project.model && project.model !== activeModel
       ? '編集ファイルを開きました。元の見た目で確認するには「' + project.model + '」のVRMを読み込んでください。'
@@ -295,6 +305,7 @@ for (const button of document.querySelectorAll('[data-view]')) {
 }
 for (const [i, { range, number }] of axes.entries()) {
   function setAngle(value) {
+    if (isPairedJoint(selected)) delete selectedFrame().pairedHands;
     const angles = selectedFrame().angles[selected] ?? [0, 0, 0];
     angles[i] = value;
     selectedFrame().angles[selected] = angles;
@@ -326,7 +337,10 @@ for (const [id, side] of [['right-hand', 'right'], ['left-hand', 'left'], ['both
   }
   select.onchange = () => {
     if (!select.value) return;
-    applyHandShape(selectedFrame().angles, side, select.value);
+    const frame = selectedFrame();
+    applyHandShape(frame.angles, side, select.value, viewport?.rig);
+    if (isPairedShape(select.value)) frame.pairedHands = select.value;
+    else delete frame.pairedHands;
     announce((side === 'both' ? '両手' : side === 'right' ? '右手' : '左手') + 'に「' + handShapes[select.value][0] + '」を適用しました。');
     select.value = '';
     renderInspector();
@@ -353,6 +367,7 @@ $('hip').oninput = event => {
   applyPose();
 };
 $('reset-joint').onclick = () => {
+  if (isPairedJoint(selected)) delete selectedFrame().pairedHands;
   delete selectedFrame().angles[selected];
   renderInspector();
   applyPose();

@@ -120,3 +120,24 @@ test('the ZIP has one playable VRMA per fighter, and preserves finger and expres
   }
   assert.ok(layouts.size > 1, 'fighter rest poses are not interchangeable copies');
 });
+
+test('paired gestures refit to each fighter in a batch without changing the editable frames', async () => {
+  const frames = [
+    { ...preset('stand'), pairedHands: 'heart' },
+    { ...preset('stand', .7), pairedHands: 'circle' },
+  ];
+  const files = unzipSync(await exportFighters(frames, ''));
+  assert.deepEqual(readProject(strFromU8(files['pose.motion.json'])).frames, frames);
+  const loader = new GLTFLoader().register(parser => new VRMAnimationLoaderPlugin(parser));
+  const layouts = new Set();
+  for (const [name, bytes] of Object.entries(files)) {
+    if (!name.endsWith('.vrma')) continue;
+    const gltf = await loader.parseAsync(bytes.buffer, '');
+    const tracks = gltf.userData.vrmAnimations[0].humanoidTracks.rotation;
+    const arm = tracks.get('leftUpperArm').values;
+    assert.ok(arm.every(Number.isFinite));
+    assert.notDeepEqual(arm.slice(0, 4), arm.slice(4, 8));
+    layouts.add(arm.join(','));
+  }
+  assert.ok(layouts.size > 1);
+});
