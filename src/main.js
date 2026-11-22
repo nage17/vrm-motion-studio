@@ -16,13 +16,12 @@ function announce(message, error = false) {
 }
 
 try {
-  viewport = new Viewport($('viewport'), $('markers'), selectBone, beginDrag);
+  viewport = new Viewport($('viewport'), $('markers'), selectBone, editRotation);
 } catch (error) {
   $('preview-fallback').hidden = false;
   announce('WebGLを有効にすると、VRMと3Dプレビューを使えます。', true);
 }
 
-const clamp = value => Math.max(-180, Math.min(180, Math.round(value)));
 const end = () => frames.at(-1).time;
 const selectedFrame = () => frames[current];
 
@@ -112,6 +111,7 @@ function applyPose() {
 }
 
 function chooseFrame(index) {
+  viewport?.cancelRotation();
   current = index;
   position = selectedFrame().time;
   playing = wasPreview = false;
@@ -121,21 +121,30 @@ function chooseFrame(index) {
 }
 
 function selectBone(name) {
+  viewport?.cancelRotation();
   selected = name;
   if (playing || wasPreview) chooseFrame(current);
   else renderInspector();
 }
 
-function beginDrag() {
-  const [x, y, z] = selectedFrame().angles[selected] ?? [0, 0, 0];
-  const bone = selected;
-  return (dx, dy) => {
-    if (selected !== bone || playing || wasPreview) return;
-    selectedFrame().angles[bone] = [clamp(x + dy * .75), y, clamp(z + dx * .75)];
-    renderInspector();
-    applyPose();
+function editRotation(bone, angles) {
+  if (selected !== bone || playing || wasPreview) return;
+  selectedFrame().angles[bone] = angles;
+  renderInspector();
+  applyPose();
+}
+
+const axisButtons = [...document.querySelectorAll('[data-rotation-axis]')];
+for (const button of axisButtons) {
+  button.onclick = () => {
+    viewport?.setAxis(button.dataset.rotationAxis);
+    for (const axis of axisButtons) axis.setAttribute('aria-pressed', String(axis === button));
   };
 }
+
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && viewport?.cancelRotation()) event.preventDefault();
+});
 
 function refreshFileButtons() {
   $('open-model').disabled = !viewport || modelBusy;
@@ -215,6 +224,7 @@ $('project-file').onchange = async event => {
   try {
     if (file.size > 2 * 1024 * 1024) throw new Error('編集用JSONは2 MB以下です。');
     const project = readProject(await file.text());
+    viewport?.cancelRotation();
     frames = project.frames;
     chooseFrame(0);
     announce(project.model && project.model !== activeModel
@@ -317,6 +327,7 @@ $('frame-time').onchange = event => {
 };
 
 $('scrub').oninput = event => {
+  viewport?.cancelRotation();
   const previous = wasPreview;
   wasPreview = true;
   playing = false;
@@ -334,6 +345,7 @@ $('play').onclick = () => {
     return;
   }
   if (end() <= 0) return;
+  viewport?.cancelRotation();
   playing = wasPreview = true;
   if (position >= end()) position = 0;
   renderTimeline();

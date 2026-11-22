@@ -45,9 +45,15 @@
       </div>
       <div id="viewport">
         <div id="markers" aria-label="関節の位置"></div>
+        <div class="rotation-axes" role="group" aria-label="表示する回転軸">
+          <button data-rotation-axis="all" type="button" aria-pressed="true">全軸</button>
+          <button data-rotation-axis="X" type="button" aria-pressed="false" aria-label="X軸だけ表示">X</button>
+          <button data-rotation-axis="Y" type="button" aria-pressed="false" aria-label="Y軸だけ表示">Y</button>
+          <button data-rotation-axis="Z" type="button" aria-pressed="false" aria-label="Z軸だけ表示">Z</button>
+        </div>
         <p id="preview-fallback" hidden>3D表示にはWebGLが必要です。</p>
       </div>
-      <div class="stage-bottom"><span><i aria-hidden="true"></i>関節の点をドラッグで調整</span><span>空白をドラッグで視点移動</span></div>
+      <div class="stage-bottom"><span><i aria-hidden="true"></i>関節を選び、色付きのリングをドラッグ</span><span class="pointer-tip">Shiftで微調整 · 空白で視点移動</span></div>
     </section>
 
     <aside class="inspector panel" aria-labelledby="inspector-title">
@@ -55,9 +61,9 @@
       <div class="joint-title"><span>選択中の部位</span><strong id="joint-name">右ひじ</strong></div>
       <fieldset id="pose-controls"><legend class="sr-only">関節と腰の調整</legend>
         <div id="axes">
-          <label data-axis="0"><span class="axis-name"><b>X</b> 前後</span><output>0°</output><input type="range" min="-180" max="180" step="1" value="0" aria-label="前後の角度 X"></label>
-          <label data-axis="1"><span class="axis-name"><b>Y</b> ひねり</span><output>0°</output><input type="range" min="-180" max="180" step="1" value="0" aria-label="ひねりの角度 Y"></label>
-          <label data-axis="2"><span class="axis-name"><b>Z</b> 左右</span><output>0°</output><input type="range" min="-180" max="180" step="1" value="0" aria-label="左右の角度 Z"></label>
+          <label data-axis="0"><span class="axis-name"><b>X</b> 回転</span><output>0°</output><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="X軸の角度"></label>
+          <label data-axis="1"><span class="axis-name"><b>Y</b> 回転</span><output>0°</output><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="Y軸の角度"></label>
+          <label data-axis="2"><span class="axis-name"><b>Z</b> 回転</span><output>0°</output><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="Z軸の角度"></label>
         </div>
         <button id="reset-joint" class="small" type="button">この関節をリセット</button>
         <label class="hip-label"><span>腰の上下</span><output id="hip-value">0%</output><input id="hip" type="range" min="-55" max="55" value="0" aria-label="腰の上下"></label>

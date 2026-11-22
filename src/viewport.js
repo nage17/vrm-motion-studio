@@ -1,5 +1,6 @@
 import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { createDemo } from './demo.js';
@@ -48,12 +49,29 @@ const markerNames = [
   'leftHand', 'rightHand', 'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg', 'leftFoot', 'rightFoot',
 ];
 
+class JointRotationControls extends TransformControls {
+  pointerDown(pointer) {
+    this.fineStart = this.fine && pointer ? { x: pointer.x, y: pointer.y } : null;
+    super.pointerDown(pointer);
+  }
+
+  pointerMove(pointer) {
+    if (pointer && this.fineStart && this.dragging) {
+      const { x, y } = this.fineStart;
+      pointer = { ...pointer, x: x + (pointer.x - x) * .25, y: y + (pointer.y - y) * .25 };
+    }
+    super.pointerMove(pointer);
+  }
+}
+
 export class Viewport {
-  constructor(container, markerLayer, selectBone, dragBone) {
+  constructor(container, markerLayer, selectBone, editRotation) {
     this.container = container;
     this.layer = markerLayer;
     this.selectBone = selectBone;
-    this.dragBone = dragBone;
+    this.editRotation = editRotation;
+    this.editEuler = new T.Euler();
+    this.editQuaternion = new T.Quaternion();
     this.markers = new Map();
     this.position = new T.Vector3();
     this.qa = new T.Quaternion();
@@ -69,6 +87,34 @@ export class Viewport {
     this.renderer.domElement.setAttribute('aria-label', 'VRM モデル');
     container.prepend(this.renderer.domElement);
 
+    // Register the rotation tool first so grabbing a ring claims the pointer before the camera does.
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener('pointerdown', event => { this.transform.fine = event.shiftKey; }, { capture: true });
+    this.transform = new JointRotationControls(this.camera, canvas);
+    this.transform.setMode('rotate');
+    this.transform.setSpace('local');
+    this.transform.setSize(.53);
+    this.transform.setColors(0xff797d, 0x8ade9f, 0x83b7ff, 0xffdf96);
+    this.scene.add(this.transform.getHelper());
+    this.transform.enabled = false;
+    this.transform.addEventListener('change', () => {
+      this.dirty = true;
+      canvas.classList.toggle('rotation-hover', !!this.transform.axis);
+    });
+    this.transform.addEventListener('dragging-changed', ({ value }) => {
+      this.orbit.enabled = !value;
+      this.container.classList.toggle('rotating', value);
+    });
+    this.transform.addEventListener('objectChange', () => {
+      this.editQuaternion.copy(this.transform.object.quaternion);
+      if (this.rig.flip) this.editQuaternion.set(-this.editQuaternion.x, this.editQuaternion.y, -this.editQuaternion.z, this.editQuaternion.w);
+      this.editEuler.setFromQuaternion(this.editQuaternion);
+      const angles = [this.editEuler.x, this.editEuler.y, this.editEuler.z].map(rad => Math.round(T.MathUtils.radToDeg(rad) * 10) / 10);
+      this.editRotation(this.selected, angles);
+    });
+    this.renderer.domElement.addEventListener('lostpointercapture', () => {
+      if (this.transform.dragging) this.transform.pointerUp(null);
+    });
     this.orbit = new OrbitControls(this.camera, this.renderer.domElement);
     this.orbit.enableDamping = true;
     this.orbit.minDistance = 1.5;
@@ -131,7 +177,25 @@ export class Viewport {
     this.dirty = true;
   }
 
+  setAxis(axis) {
+    this.cancelRotation();
+    this.transform.showX = axis === 'all' || axis === 'X';
+    this.transform.showY = axis === 'all' || axis === 'Y';
+    this.transform.showZ = axis === 'all' || axis === 'Z';
+    this.transform.axis = null;
+  }
+
+  cancelRotation() {
+    if (!this.transform.dragging) return false;
+    this.transform.reset();
+    this.transform.pointerUp(null);
+    return true;
+  }
+
   setRig(rig) {
+    this.cancelRotation();
+    this.transform.detach();
+    this.transform.enabled = false;
     if (this.rig) {
       this.group.remove(this.rig.model);
       VRMUtils.deepDispose(this.rig.model);
@@ -154,24 +218,10 @@ export class Viewport {
       button.title = partNames[name];
       button.setAttribute('aria-label', partNames[name]);
       button.addEventListener('click', () => this.selectBone(name));
-      button.addEventListener('pointerdown', event => this.startDrag(event, name, button));
       this.layer.append(button);
       this.markers.set(name, button);
     }
     this.setView('angle');
-  }
-
-  startDrag(event, name, button) {
-    if (event.button !== 0) return;
-    this.selectBone(name);
-    button.setPointerCapture(event.pointerId);
-    const x = event.clientX, y = event.clientY;
-    const edit = this.dragBone();
-    const move = e => {
-      if (e.pointerId === event.pointerId) edit(e.clientX - x, e.clientY - y);
-    };
-    button.addEventListener('pointermove', move);
-    button.addEventListener('lostpointercapture', () => button.removeEventListener('pointermove', move), { once: true });
   }
 
   apply(a, b, t) {
@@ -189,7 +239,14 @@ export class Viewport {
   }
 
   render(selected, showMarkers) {
-    const cameraMoved = this.orbit.update();
+    const bone = showMarkers ? this.rig.bones[selected] : null;
+    if (bone !== (this.transform.object ?? null)) {
+      this.cancelRotation();
+      if (bone) this.transform.attach(bone);
+      else this.transform.detach();
+      this.transform.enabled = Boolean(bone);
+    }
+    const cameraMoved = this.transform.dragging ? false : this.orbit.update();
     if (!cameraMoved && !this.dirty && selected === this.selected && showMarkers === this.showMarkers) return;
     this.dirty = false;
     this.selected = selected;

@@ -86,9 +86,18 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; vertical-align: m
 #viewport canvas, #markers { position: absolute; inset: 0; width: 100%; height: 100%; }
 #markers { pointer-events: none; }
 #preview-fallback { position: absolute; inset: 0; display: grid; place-content: center; padding: 15px; color: var(--muted); text-align: center; }
+.rotation-axes { position: absolute; inset: auto 9px 9px auto; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: #0b1321e8; }
+.rotation-axes button { min-width: 33px; min-height: 32px; padding: 3px 7px; font-size: .79rem; font-weight: 700; }
+.rotation-axes [data-rotation-axis="X"] { color: #ff9d9e; }
+.rotation-axes [data-rotation-axis="Y"] { color: #a4e9b3; }
+.rotation-axes [data-rotation-axis="Z"] { color: #a7caff; }
+#viewport canvas.rotation-hover { cursor: grab; }
+#viewport.rotating canvas { cursor: grabbing; }
+@media (pointer: coarse) { .pointer-tip { display: none; } }
+#viewport.rotating .joint-marker { pointer-events: none; }
 button.joint-marker {
   position: absolute; width: 22px; height: 22px; min-height: 0; padding: 0; border-radius: 50%;
-  transform: translate(-50%, -50%); background: transparent; border: 0; pointer-events: auto; touch-action: none; cursor: grab;
+  transform: translate(-50%, -50%); background: transparent; border: 0; pointer-events: auto; touch-action: none; cursor: pointer;
 }
 button.joint-marker::after { content: ""; position: absolute; inset: 6px; border: 1px solid #fff6d8; border-radius: 50%; background: #eeb37b; box-shadow: 0 0 0 2px #172136e0; }
 button.joint-marker:hover, button.joint-marker.selected { z-index: 1; background: #ffcc8745; }
