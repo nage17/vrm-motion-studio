@@ -6,6 +6,7 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { createDemo } from './demo.js';
 import { partNames } from './project.js';
 import { rotation } from './vrma.js';
+import { expressionWeight } from './gestures.js';
 
 export async function loadModel(file) {
   if (!/\.vrm$/i.test(file.name)) throw new Error('拡張子が .vrm のファイルを選んでください。');
@@ -33,10 +34,16 @@ export async function loadModel(file) {
     const dimensions = box.getSize(new T.Vector3());
     if (!(dimensions.y > .001 && Number.isFinite(dimensions.y))) throw new Error('モデルの身長を取得できませんでした。');
     const bones = Object.fromEntries(Object.entries(vrm.humanoid.normalizedHumanBones).map(([name, bone]) => [name, bone.node]));
+    const expressions = vrm.expressionManager;
     return {
       model: gltf.scene, bones, flip, ground: box.min.y, height: dimensions.y,
       center: box.getCenter(new T.Vector3()), metaName: vrm.meta.name || vrm.meta.title || file.name,
-      update: () => vrm.humanoid.update(),
+      expressions: Object.keys(expressions?.presetExpressionMap ?? {}),
+      setExpression: (name, weight) => expressions?.setValue(name, weight),
+      update: () => {
+        vrm.humanoid.update();
+        expressions?.update();
+      },
     };
   } catch (error) {
     VRMUtils.deepDispose(gltf.scene);
@@ -234,6 +241,10 @@ export class Viewport {
     const hips = this.rig.bones.hips;
     hips.position.copy(this.rig.rest.get('hips'));
     hips.position.y += T.MathUtils.lerp(a.hip, b.hip, t) * this.rig.hipHeight;
+    for (const name of this.rig.expressions ?? []) {
+      const weight = T.MathUtils.lerp(expressionWeight(a, name), expressionWeight(b, name), t);
+      this.rig.setExpression(name, weight);
+    }
     this.rig.update?.();
     this.dirty = true;
   }

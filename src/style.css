@@ -108,8 +108,22 @@ button.joint-marker.selected::after { inset: 4px; background: #ffe0a9; box-shado
 .joint-title strong { font-size: 1.1rem; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 fieldset:disabled { opacity: .60; }
-#axes label, .hip-label { display: grid; align-items: center; grid-template-columns: 1fr auto; gap: 1px 5px; padding: 7px 0; color: #e1e8fa; font-size: .85rem; }
-#axes input, .hip-label input { grid-column: 1/-1; }
+#axes [data-axis], .hip-label { display: grid; align-items: center; grid-template-columns: 1fr auto; gap: 1px 5px; padding: 5px 0; color: #e1e8fa; font-size: .85rem; }
+#axes input[type="range"], .hip-label input { grid-column: 1/-1; }
+.degrees { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+.degrees input, .pose-options select {
+  min-width: 0; padding: 5px 6px; background: #0b1321; color: #e1e8fa;
+  border: 1px solid var(--line); border-radius: 4px; font: inherit;
+}
+.degrees input { width: 6ch; box-sizing: content-box; }
+.pose-options { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 6px 9px; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 9px; font-size: .83rem; }
+.pose-options h3, .pose-options p { grid-column: 1/-1; margin: 0; }
+.pose-options h3 { font-size: .88rem; }
+.expression-mix { display: grid; grid-template-columns: minmax(0,1fr) 4ch; align-items: center; gap: 5px; }
+.finger-group summary { cursor: pointer; padding: 6px 0; font-size: .86rem; }
+.finger-group .part-buttons { padding-bottom: 5px; }
+.finger-group .part-buttons { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.finger-group .part-buttons button { white-space: normal; }
 .axis-name b { display: inline-grid; place-items: center; width: 21px; height: 21px; margin-right: 3px; font-size: .76rem; border-radius: 4px; background: #3e2c3e; color: #ffb4a6; }
 [data-axis="1"] .axis-name b { background: #243d39; color: #a1e4b6; }
 [data-axis="2"] .axis-name b { background: #253854; color: #a7cfff; }

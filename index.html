@@ -15,6 +15,7 @@
       <button id="open-project" type="button">編集ファイルを開く</button>
       <button id="save-project" type="button">編集用JSONを保存</button>
       <button id="export" class="accent" type="button">VRMAを書き出す</button>
+      <button id="export-fighters" class="outline" type="button">全ファイター分をZIPで保存</button>
     </div>
     <input id="project-file" type="file" accept=".json,application/json" hidden>
   </header>
@@ -59,11 +60,11 @@
     <aside class="inspector panel" aria-labelledby="inspector-title">
       <h2 id="inspector-title">ポーズ調整</h2>
       <div class="joint-title"><span>選択中の部位</span><strong id="joint-name">右ひじ</strong></div>
-      <fieldset id="pose-controls"><legend class="sr-only">関節と腰の調整</legend>
+      <fieldset id="pose-controls"><legend class="sr-only">関節、手、表情の調整</legend>
         <div id="axes">
-          <label data-axis="0"><span class="axis-name"><b>X</b> 回転</span><output>0°</output><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="X軸の角度"></label>
-          <label data-axis="1"><span class="axis-name"><b>Y</b> 回転</span><output>0°</output><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="Y軸の角度"></label>
-          <label data-axis="2"><span class="axis-name"><b>Z</b> 回転</span><output>0°</output><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="Z軸の角度"></label>
+          <div data-axis="0"><label class="axis-name" for="axis-x"><b>X</b> 回転</label><span class="degrees"><input id="axis-x" type="number" min="-180" max="180" step="0.1" value="0" aria-label="X軸の角度を入力">°</span><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="X軸のスライダー"></div>
+          <div data-axis="1"><label class="axis-name" for="axis-y"><b>Y</b> 回転</label><span class="degrees"><input id="axis-y" type="number" min="-180" max="180" step="0.1" value="0" aria-label="Y軸の角度を入力">°</span><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="Y軸のスライダー"></div>
+          <div data-axis="2"><label class="axis-name" for="axis-z"><b>Z</b> 回転</label><span class="degrees"><input id="axis-z" type="number" min="-180" max="180" step="0.1" value="0" aria-label="Z軸の角度を入力">°</span><input type="range" min="-180" max="180" step="0.1" value="0" aria-label="Z軸のスライダー"></div>
         </div>
         <button id="reset-joint" class="small" type="button">この関節をリセット</button>
         <label class="hip-label"><span>腰の上下</span><output id="hip-value">0%</output><input id="hip" type="range" min="-55" max="55" value="0" aria-label="腰の上下"></label>
@@ -72,6 +73,19 @@
           <button data-preset="guard" type="button">構え</button>
           <button data-preset="t" type="button">Tポーズ</button>
         </div>
+        <section class="pose-options" aria-labelledby="hand-title">
+          <h3 id="hand-title">手の形</h3>
+          <label for="right-hand">右手</label><select id="right-hand"></select>
+          <label for="left-hand">左手</label><select id="left-hand"></select>
+          <label for="both-hands">両手</label><select id="both-hands"></select>
+        </section>
+        <section class="pose-options" aria-labelledby="expression-title">
+          <h3 id="expression-title">表情</h3>
+          <label for="expression">種類</label><select id="expression"></select>
+          <label for="expression-weight">強さ</label>
+          <div class="expression-mix"><input id="expression-weight" type="range" min="0" max="100" value="100"><output id="expression-value">100%</output></div>
+          <p class="hint" id="expression-hint" role="status" hidden></p>
+        </section>
       </fieldset>
     </aside>
 

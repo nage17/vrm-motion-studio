@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { digits, expressions } from './gestures.js';
 
 export function createDemo() {
   const model = new T.Group();
@@ -18,6 +19,7 @@ export function createDemo() {
     mesh.position.set(x, y, z);
     mesh.scale.set(sx, sy, sz);
     parent.add(mesh);
+    return mesh;
   }
 
   const hips = bone('hips', model, 0, .89);
@@ -33,7 +35,10 @@ export function createDemo() {
   const head = bone('head', neck, 0, .085);
   oval(head, shell, 0, .082, .008, .102, .122, .092);
   oval(head, trim, 0, .099, .063, .095, .055, .055);
-  oval(head, gold, 0, .10, .109, .064, .013, .012);
+  const eyes = [-1, 1].map(sign => oval(head, gold, sign * .040, .108, .112, .019, .010, .010));
+  const brows = [-1, 1].map(sign => oval(head, trim, sign * .040, .139, .117, .024, .005, .005));
+  const mouth = oval(head, gold, 0, .066, .106, .023, .004, .007);
+  const weights = {};
 
   for (const [side, dir] of [['left', 1], ['right', -1]]) {
     const arm = bone(side + 'UpperArm', chest, dir * .192, .119);
@@ -43,7 +48,17 @@ export function createDemo() {
     oval(elbow, gold, 0, 0, 0, .046, .044, .044);
     oval(elbow, shell, dir * .106, 0, 0, .095, .047, .051);
     const hand = bone(side + 'Hand', elbow, dir * .214, 0);
-    oval(hand, trim, dir * .042, 0, 0, .059, .039, .046);
+    oval(hand, trim, dir * .034, 0, 0, .043, .024, .042);
+    for (const [index, [digit, , joints]] of digits.entries()) {
+      let parent = hand;
+      const length = [.020, .024, .027, .024, .019][index];
+      for (const [i, joint] of joints.entries()) {
+        const knuckle = i === 0;
+        parent = bone(side + digit + joint, parent,
+          dir * (knuckle ? (index === 0 ? .032 : .070) : length), 0, knuckle ? .044 - index * .017 : 0);
+        oval(parent, shell, dir * length * .45, 0, 0, length * .62, .0085, .0085);
+      }
+    }
     const leg = bone(side + 'UpperLeg', hips, dir * .10, -.039);
     oval(leg, shell, 0, -.173, 0, .086, .174, .081);
     const knee = bone(side + 'LowerLeg', leg, 0, -.359);
@@ -52,5 +67,21 @@ export function createDemo() {
     const foot = bone(side + 'Foot', knee, 0, -.377);
     oval(foot, trim, 0, -.061, .058, .062, .065, .117);
   }
-  return { model, bones, rigRoot: model, height: 1.68, ground: -.012, metaName: '練習用モデル' };
+  return {
+    model, bones, rigRoot: model, height: 1.68, ground: -.012, metaName: '練習用モデル',
+    expressions: Object.keys(expressions).filter(name => name !== 'neutral'),
+    setExpression: (name, weight) => { weights[name] = weight; },
+    update() {
+      for (const [i, eye] of eyes.entries()) {
+        const wink = i === 0 ? weights.blinkRight : weights.blinkLeft;
+        const closed = Math.max(weights.blink, wink, weights.happy * .52, weights.relaxed * .36);
+        eye.scale.y = .010 * (1 - .86 * closed + weights.surprised * .55);
+        brows[i].rotation.z = (i === 0 ? 1 : -1) * (.41 * weights.angry - .30 * weights.sad);
+        brows[i].position.y = .139 + .014 * weights.surprised;
+      }
+      mouth.scale.x = .023 + .010 * (weights.ih + weights.ee + weights.happy) - .010 * (weights.ou + weights.oh);
+      mouth.scale.y = .004 + .022 * weights.aa + .016 * weights.oh + .010 * (weights.ou + weights.ee) +
+        .015 * weights.surprised + .007 * (weights.happy + weights.relaxed);
+    },
+  };
 }

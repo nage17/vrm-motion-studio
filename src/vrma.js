@@ -1,5 +1,6 @@
 import { AnimationClip, Euler, Object3D, Quaternion, QuaternionKeyframeTrack, VectorKeyframeTrack, MathUtils } from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { expressionWeight } from './gestures.js';
 
 export function rotation(values = [0, 0, 0], target = new Quaternion()) {
   return target.setFromEuler(new Euler(...values.map(MathUtils.degToRad), 'XYZ'));
@@ -34,11 +35,27 @@ export async function exportVrma(rig, frames) {
   const translations = keys.flatMap(frame => [hips.x, hips.y + frame.hip * rig.hipHeight, hips.z]);
   tracks.push(new VectorKeyframeTrack('hips.position', times, translations));
 
+  const expressionNodes = new Map();
+  for (const name of new Set(keys.map(frame => frame.expression?.name))) {
+    if (!name || name === 'neutral') continue;
+    const node = new Object3D();
+    node.name = 'expression_' + name;
+    root.add(node);
+    expressionNodes.set(name, node);
+    tracks.push(new VectorKeyframeTrack(node.name + '.position', times,
+      keys.flatMap(frame => [expressionWeight(frame, name), 0, 0])));
+  }
+
   const exporter = new GLTFExporter().register(writer => ({
     afterParse() {
       const humanBones = Object.fromEntries([...copies].map(([name, node]) => [name, { node: writer.nodeMap.get(node) }]));
       writer.json.extensions ??= {};
       writer.json.extensions.VRMC_vrm_animation = { specVersion: '1.0', humanoid: { humanBones } };
+      if (expressionNodes.size) {
+        writer.json.extensions.VRMC_vrm_animation.expressions = {
+          preset: Object.fromEntries([...expressionNodes].map(([name, node]) => [name, { node: writer.nodeMap.get(node) }])),
+        };
+      }
       writer.extensionsUsed.VRMC_vrm_animation = true;
     },
   }));

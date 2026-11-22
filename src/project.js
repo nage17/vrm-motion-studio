@@ -1,7 +1,14 @@
+import { digits, expressions, sides } from './gestures.js';
+
 export const parts = [
   { label: '体幹', bones: [['hips', '腰'], ['spine', '背中'], ['chest', '胸'], ['upperChest', '上胸'], ['neck', '首'], ['head', '頭']] },
   { label: '腕', bones: [['leftShoulder', '左肩'], ['rightShoulder', '右肩'], ['leftUpperArm', '左腕'], ['rightUpperArm', '右腕'], ['leftLowerArm', '左ひじ'], ['rightLowerArm', '右ひじ'], ['leftHand', '左手'], ['rightHand', '右手']] },
   { label: '脚', bones: [['leftUpperLeg', '左もも'], ['rightUpperLeg', '右もも'], ['leftLowerLeg', '左ひざ'], ['rightLowerLeg', '右ひざ'], ['leftFoot', '左足'], ['rightFoot', '右足'], ['leftToes', '左つま先'], ['rightToes', '右つま先']] },
+  ...sides.map(side => ({
+    label: side === 'left' ? '左手の指' : '右手の指',
+    bones: digits.flatMap(([digit, label, joints]) => joints.map((joint, i) =>
+      [side + digit + joint, (side === 'left' ? '左' : '右') + label + ' ' + (i + 1)])),
+  })),
 ];
 
 export const partNames = Object.fromEntries(parts.flatMap(group => group.bones));
@@ -56,7 +63,15 @@ export function readProject(json) {
       }
       angles[bone] = values.slice();
     }
-    return { time, angles, hip: entry.hip };
+    const frame = { time, angles, hip: entry.hip };
+    if (entry.expression !== undefined) {
+      const { name, weight } = entry.expression ?? {};
+      if (!Object.hasOwn(expressions, name) || !Number.isFinite(weight) || weight < 0 || weight > 1) {
+        throw new Error('表情の設定が正しくありません。');
+      }
+      frame.expression = { name, weight };
+    }
+    return frame;
   });
   return { frames, model: typeof data.model === 'string' ? data.model.slice(0, 200) : '' };
 }

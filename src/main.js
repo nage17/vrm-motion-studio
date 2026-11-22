@@ -1,6 +1,8 @@
 import './style.css';
 import { Viewport, loadModel } from './viewport.js';
 import { exportVrma } from './vrma.js';
+import { exportFighters, fighterCount } from './fighter-export.js';
+import { applyHandShape, expressions, handShapes } from './gestures.js';
 import { parts, partNames, preset, readProject, surroundingFrames, projectType, maxFrames, maxTime, step, roundTime } from './project.js';
 
 const $ = id => document.getElementById(id);
@@ -8,7 +10,10 @@ let frames = [preset('stand')];
 let current = 0, position = 0, selected = 'rightLowerArm', playing = false;
 let modelBusy = false, exportBusy = false, wasPreview = false, viewport;
 let activeModel = '';
-const axes = [...document.querySelectorAll('[data-axis]')];
+const axes = [...document.querySelectorAll('[data-axis]')].map(row => ({
+  range: row.querySelector('input[type="range"]'),
+  number: row.querySelector('input[type="number"]'),
+}));
 
 function announce(message, error = false) {
   $('status').textContent = message;
@@ -27,10 +32,12 @@ const selectedFrame = () => frames[current];
 
 function renderParts() {
   const support = viewport ? viewport.rig.bones : partNames;
-  const sections = parts.map(group => {
-    const section = document.createElement('section');
+  const sections = parts.map((group, index) => {
+    const fingers = index >= 3;
+    const section = document.createElement(fingers ? 'details' : 'section');
     section.className = 'part-group';
-    const heading = document.createElement('h3');
+    if (fingers) section.classList.add('finger-group');
+    const heading = document.createElement(fingers ? 'summary' : 'h3');
     heading.textContent = group.label;
     const buttons = document.createElement('div');
     buttons.className = 'part-buttons';
@@ -44,18 +51,25 @@ function renderParts() {
       buttons.append(button);
     }
     section.append(heading, buttons);
-    return section;
-  });
+    return buttons.childElementCount ? section : null;
+  }).filter(Boolean);
   $('part-list').replaceChildren(...sections);
 }
 
 function renderInspector() {
   $('joint-name').textContent = partNames[selected];
   const angles = selectedFrame().angles[selected] ?? [0, 0, 0];
-  axes.forEach((row, i) => {
-    row.querySelector('input').value = angles[i];
-    row.querySelector('output').textContent = angles[i] + '°';
+  axes.forEach(({ range, number }, i) => {
+    range.value = number.value = angles[i];
   });
+  const expression = selectedFrame().expression ?? { name: 'neutral', weight: 1 };
+  $('expression').value = expression.name;
+  $('expression-weight').value = Math.round(expression.weight * 100);
+  $('expression-weight').disabled = expression.name === 'neutral';
+  $('expression-value').textContent = $('expression-weight').value + '%';
+  const unsupported = expression.name !== 'neutral' && viewport && !viewport.rig.expressions?.includes(expression.name);
+  $('expression-hint').hidden = !unsupported;
+  $('expression-hint').textContent = unsupported ? 'このモデルに「' + expressions[expression.name] + '」の表情がありません。設定は保存されます。' : '';
   $('hip').value = Math.round(selectedFrame().hip * 100);
   $('hip-value').textContent = $('hip').value + '%';
   $('pose-controls').disabled = playing || wasPreview;
@@ -149,6 +163,7 @@ window.addEventListener('keydown', event => {
 function refreshFileButtons() {
   $('open-model').disabled = !viewport || modelBusy;
   $('export').disabled = !viewport || exportBusy || modelBusy;
+  $('export-fighters').disabled = exportBusy;
 }
 
 async function useModel(file) {
@@ -185,8 +200,8 @@ function setView(view) {
   }
 }
 
-function download(data, type, extension) {
-  const name = (activeModel || 'motion').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').trim().slice(0, 90) || 'motion';
+function download(data, type, extension, base = activeModel) {
+  const name = (base || 'motion').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').trim().slice(0, 90) || 'motion';
   const url = URL.createObjectURL(new Blob([data], { type }));
   const link = document.createElement('a');
   link.href = url;
@@ -257,18 +272,81 @@ $('export').onclick = async () => {
   }
 };
 
+$('export-fighters').onclick = async () => {
+  if (exportBusy) return;
+  exportBusy = true;
+  refreshFileButtons();
+  announce('全' + fighterCount + 'ファイターのVRMAを作成中…');
+  try {
+    const archive = await exportFighters(structuredClone(frames), activeModel);
+    download(archive, 'application/zip', '.zip', 'VRM-BRAWL-poses');
+    announce('全' + fighterCount + 'ファイター分のVRMAと編集用JSONをZIPに保存しました。');
+  } catch (error) {
+    console.warn(error);
+    announce('全ファイター分のZIPを書き出せませんでした。', true);
+  } finally {
+    exportBusy = false;
+    refreshFileButtons();
+  }
+};
+
 for (const button of document.querySelectorAll('[data-view]')) {
   button.onclick = () => setView(button.dataset.view);
 }
-for (const [i, row] of axes.entries()) {
-  row.querySelector('input').oninput = event => {
+for (const [i, { range, number }] of axes.entries()) {
+  function setAngle(value) {
     const angles = selectedFrame().angles[selected] ?? [0, 0, 0];
-    angles[i] = Number(event.target.value);
+    angles[i] = value;
     selectedFrame().angles[selected] = angles;
-    row.querySelector('output').textContent = angles[i] + '°';
+    applyPose();
+  }
+  range.oninput = () => {
+    number.value = range.value;
+    setAngle(range.valueAsNumber);
+  };
+  number.oninput = () => {
+    const value = number.valueAsNumber;
+    if (!Number.isFinite(value) || Math.abs(value) > 180) return;
+    range.value = value;
+    setAngle(value);
+  };
+  number.onchange = () => {
+    const value = number.valueAsNumber;
+    if (Number.isFinite(value)) setAngle(Math.max(-180, Math.min(180, value)));
+    number.value = range.value = selectedFrame().angles[selected]?.[i] ?? 0;
+  };
+}
+
+const handOptions = Object.entries(handShapes).map(([id, [label]]) => [id, label]);
+for (const [id, side] of [['right-hand', 'right'], ['left-hand', 'left'], ['both-hands', 'both']]) {
+  const select = $(id);
+  select.add(new Option('手の形を選ぶ', ''));
+  for (const [shape, label] of handOptions) {
+    if ((side === 'both') === (shape === 'circle' || shape === 'heart')) select.add(new Option(label, shape));
+  }
+  select.onchange = () => {
+    if (!select.value) return;
+    applyHandShape(selectedFrame().angles, side, select.value);
+    announce((side === 'both' ? '両手' : side === 'right' ? '右手' : '左手') + 'に「' + handShapes[select.value][0] + '」を適用しました。');
+    select.value = '';
+    renderInspector();
     applyPose();
   };
 }
+for (const [name, label] of Object.entries(expressions)) $('expression').add(new Option(label, name));
+$('expression').onchange = () => {
+  const name = $('expression').value;
+  if (name === 'neutral') delete selectedFrame().expression;
+  else selectedFrame().expression = { name, weight: selectedFrame().expression?.weight ?? 1 };
+  renderInspector();
+  applyPose();
+};
+$('expression-weight').oninput = () => {
+  if (!selectedFrame().expression) return;
+  selectedFrame().expression.weight = Number($('expression-weight').value) / 100;
+  $('expression-value').textContent = $('expression-weight').value + '%';
+  applyPose();
+};
 $('hip').oninput = event => {
   selectedFrame().hip = Number(event.target.value) / 100;
   $('hip-value').textContent = event.target.value + '%';
