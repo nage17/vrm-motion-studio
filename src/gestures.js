@@ -18,11 +18,23 @@ export const handShapes = {
   middle: ['中指を立てる', [.8, 1, 0, 1, 1]],
   ring: ['薬指を立てる', [.8, 1, 1, 0, 1]],
   little: ['小指を立てる', [.8, 1, 1, 1, 0]],
-  money: ['金の形', [.70, .48, .37, .30, .23]],
+  money: ['金の形', [0, 0, .12, .16, .20]],
   fox: ['コン', [.65, 0, .66, .66, 0]],
   spider: ['スパイダーストリングス', [0, 0, 1, 1, 0]],
   circle: ['両手でまる', [.25, .24, .26, .28, .30]],
   heart: ['両手でハート', [.18, .29, .42, .51, .56]],
+};
+
+// Local joint angles for gestures whose thumb and index shape cannot be
+// expressed by an ordinary finger curl. X is unchanged by left/right mirroring.
+const detailAngles = {
+  money: {
+    Thumb: [[0, 28, -7], [0, 7.5, -12.5], [0, 18, -17]],
+    Index: [[0, -16, -18], [0, 3.5, -49], [0, 2, -44]],
+  },
+  thumbsUp: {
+    Thumb: [[-24, -48, 0], [0, -3, 2], [0, 1, 0]],
+  },
 };
 
 function shapeHand(angles, side, shape) {
@@ -30,11 +42,16 @@ function shapeHand(angles, side, shape) {
   const sign = side === 'left' ? 1 : -1;
   const fan = shape === 'spread' ? 1 : shape === 'peace' || shape === 'spider' || shape === 'fox' ? .7 : .12;
   for (const [i, [digit, , joints]] of digits.entries()) {
+    const detail = detailAngles[shape]?.[digit];
     for (const [j, joint] of joints.entries()) {
+      if (detail) {
+        const [x, y, z] = detail[j];
+        angles[side + digit + joint] = [x, y * sign || 0, z * sign || 0];
+        continue;
+      }
       const bend = (i === 0 ? [24, 37, 48] : [76, 96, 57])[j] * flex[i];
-      const fanAngle = i === 0 && shape === 'thumbsUp' ? -27 : [-26, -12, -3, 5, 15][i] * fan;
-      const spread = j === 0 ? fanAngle : 0;
-      const opposition = i === 0 && j === 0 && shape !== 'thumbsUp' ? 39 * flex[i] : 0;
+      const spread = j === 0 ? [-26, -12, -3, 5, 15][i] * fan : 0;
+      const opposition = i === 0 && j === 0 ? 39 * flex[i] : 0;
       angles[side + digit + joint] = [sign * opposition, sign * spread, -sign * bend]
         .map(angle => Math.round(angle * 10) / 10 || 0);
     }

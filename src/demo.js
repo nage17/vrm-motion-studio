@@ -54,8 +54,16 @@ export function createDemo() {
       const length = [.020, .024, .027, .024, .019][index];
       for (const [i, joint] of joints.entries()) {
         const knuckle = i === 0;
+        if (digit === 'Thumb') {
+          const [x, y, z] = [[.004, -.009, .017], [.035, -.002, .031], [.023, -.001, .018]][i];
+          parent = bone(side + digit + joint, parent, dir * x, y, z);
+          const size = [.041, .026, .023][i];
+          oval(parent, shell, dir * size * .38, 0, size * .3, size * .59, .010, .010).rotation.y = -dir * .69;
+          continue;
+        }
         parent = bone(side + digit + joint, parent,
-          dir * (knuckle ? (index === 0 ? .032 : .070) : length), 0, knuckle ? .044 - index * .017 : 0);
+          dir * (knuckle ? .066 : i === 1 ? length * 1.38 : length * .85),
+          knuckle ? .006 : 0, knuckle ? .041 - index * .021 : 0);
         oval(parent, shell, dir * length * .45, 0, 0, length * .62, .0085, .0085);
       }
     }
