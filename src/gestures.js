@@ -1,3 +1,5 @@
+import { Euler, MathUtils, Quaternion } from 'three';
+
 export const digits = [
   ['Thumb', '親指', ['Metacarpal', 'Proximal', 'Distal']],
   ['Index', '人差し指', ['Proximal', 'Intermediate', 'Distal']],
@@ -18,7 +20,7 @@ export const handShapes = {
   middle: ['中指を立てる', [.8, 1, 0, 1, 1]],
   ring: ['薬指を立てる', [.8, 1, 1, 0, 1]],
   little: ['小指を立てる', [.8, 1, 1, 1, 0]],
-  money: ['金の形', [0, 0, .12, .16, .20]],
+  money: ['お金の手', [0, 0, .04, .05, .06]],
   fox: ['コン', [.65, 0, .66, .66, 0]],
   spider: ['スパイダーストリングス', [0, 0, 1, 1, 0]],
   circle: ['両手でまる', [.25, .24, .26, .28, .30]],
@@ -29,8 +31,8 @@ export const handShapes = {
 // expressed by an ordinary finger curl. X is unchanged by left/right mirroring.
 const detailAngles = {
   money: {
-    Thumb: [[0, 28, -7], [0, 7.5, -12.5], [0, 18, -17]],
-    Index: [[0, -16, -18], [0, 3.5, -49], [0, 2, -44]],
+    Thumb: [[-4.5, 18, -22], [-1, 32, 14.5], [0, 4.5, -3.5]],
+    Index: [[0, -14.5, -13.5], [0, 2, -58.5], [0, 1, -40.5]],
   },
   thumbsUp: {
     Thumb: [[-24, -48, 0], [0, -3, 2], [0, 1, 0]],
@@ -49,18 +51,33 @@ function shapeHand(angles, side, shape) {
         angles[side + digit + joint] = [x, y * sign || 0, z * sign || 0];
         continue;
       }
-      const bend = (i === 0 ? [24, 37, 48] : [76, 96, 57])[j] * flex[i];
+      const bend = (i === 0 ? [0, 35, 23] : [76, 96, 57])[j] * flex[i];
       const spread = j === 0 ? [-26, -12, -3, 5, 15][i] * fan : 0;
       const opposition = i === 0 && j === 0 ? 39 * flex[i] : 0;
-      angles[side + digit + joint] = [sign * opposition, sign * spread, -sign * bend]
+      angles[side + digit + joint] = [opposition, sign * spread, -sign * bend]
         .map(angle => Math.round(angle * 10) / 10 || 0);
     }
   }
 }
 
+function rollJoint(angles, name, roll) {
+  // In YZX order, X is an axial roll applied after aiming the joint.
+  const original = new Euler(...(angles[name] ?? [0, 0, 0]).map(MathUtils.degToRad), 'XYZ');
+  const q = new Quaternion().setFromEuler(original);
+  const axial = new Euler().setFromQuaternion(q, 'YZX');
+  axial.x = MathUtils.degToRad(roll);
+  original.setFromQuaternion(q.setFromEuler(axial), 'XYZ');
+  angles[name] = [original.x, original.y, original.z]
+    .map(angle => Math.round(MathUtils.radToDeg(angle) * 10) / 10 || 0);
+}
+
 export function applyHandShape(angles, side, shape) {
   if (shape !== 'circle' && shape !== 'heart') {
     shapeHand(angles, side, shape);
+    if (shape === 'money') {
+      rollJoint(angles, side + 'LowerArm', 135);
+      rollJoint(angles, side + 'Hand', 45);
+    }
     return;
   }
   for (const hand of sides) {

@@ -7,7 +7,7 @@ export const parts = [
   ...sides.map(side => ({
     label: side === 'left' ? '左手の指' : '右手の指',
     bones: digits.flatMap(([digit, label, joints]) => joints.map((joint, i) =>
-      [side + digit + joint, (side === 'left' ? '左' : '右') + label + ' ' + (i + 1)])),
+      [side + digit + joint, (side === 'left' ? '左' : '右') + label + ' ' + (digit === 'Thumb' ? ['付け根', '第1関節', '第2関節'][i] : i + 1)])),
   })),
 ];
 

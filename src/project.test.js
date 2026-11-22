@@ -8,6 +8,7 @@ import { exportVrma, rotation } from './vrma.js';
 import { applyHandShape, handShapes } from './gestures.js';
 import { exportFighters, fighterCount } from './fighter-export.js';
 import { strFromU8, unzipSync } from 'three/addons/libs/fflate.module.js';
+import { Vector3 } from 'three';
 
 globalThis.FileReader ??= class {
   readAsArrayBuffer(blob) {
@@ -73,6 +74,25 @@ test('hand presets are independent and paired gestures pose both arms', () => {
     assert.ok(frame.angles.rightIndexProximal);
   }
   assert.deepEqual(readProject(serialize([frame])).frames, [frame]);
+});
+
+test('the money gesture turns the palm up and keeps the thumb tip nearly straight', () => {
+  for (const side of ['left', 'right']) {
+    const angles = {};
+    applyHandShape(angles, side, 'money');
+    const palm = rotation(angles[side + 'LowerArm']).multiply(rotation(angles[side + 'Hand']));
+    assert.ok(new Vector3(0, -1, 0).applyQuaternion(palm).y > .99);
+    assert.ok(angles[side + 'ThumbDistal'].every(angle => Math.abs(angle) < 6));
+    assert.equal(angles[(side === 'left' ? 'right' : 'left') + 'Hand'], undefined);
+    const before = structuredClone(angles);
+    applyHandShape(angles, side, 'money');
+    assert.deepEqual(angles, before);
+  }
+  const frame = preset('guard');
+  const direction = new Vector3(1, 0, 0);
+  const before = direction.clone().applyQuaternion(rotation(frame.angles.leftLowerArm));
+  applyHandShape(frame.angles, 'left', 'money');
+  assert.ok(direction.applyQuaternion(rotation(frame.angles.leftLowerArm)).distanceTo(before) < .003);
 });
 
 test('the ZIP has one playable VRMA per fighter, and preserves finger and expression keyframes', async () => {
