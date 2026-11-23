@@ -3,6 +3,7 @@ import { Viewport, loadModel } from './viewport.js';
 import { exportVrma } from './vrma.js';
 import { exportFighters, fighterCount } from './fighter-export.js';
 import { applyHandShape, expressions, handShapes, isPairedJoint, isPairedShape } from './gestures.js';
+import { inmuChorus } from './inmu-chorus.js';
 import { parts, partNames, preset, readProject, surroundingFrames, projectType, maxFrames, maxTime, step, roundTime } from './project.js';
 
 const $ = id => document.getElementById(id);
@@ -432,17 +433,48 @@ $('scrub').oninput = event => {
   applyPose();
 };
 
-$('play').onclick = () => {
-  if (playing) {
-    chooseFrame(current);
-    return;
-  }
+function startPlayback() {
   if (end() <= 0) return;
   viewport?.cancelRotation();
   playing = wasPreview = true;
   if (position >= end()) position = 0;
   renderTimeline();
   renderInspector();
+}
+$('play').onclick = () => {
+  if (playing) chooseFrame(current);
+  else startPlayback();
+};
+
+const danceDialog = $('dance-dialog');
+function loadChorus(clip, append) {
+  const index = append ? frames.length : 0;
+  const offset = append ? roundTime(end() + .25) : 0;
+  if (!append) frames = [];
+  frames.push(...clip.map(frame => ({ ...frame, time: roundTime(frame.time + offset) })));
+  chooseFrame(index);
+  $('frames').children[index]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  startPlayback();
+  announce('INMU KINGのサビを再生中。停止してコマを選ぶと編集できます。');
+}
+$('inmu-chorus').onclick = () => {
+  const clip = inmuChorus();
+  if (frames.length === 1 && JSON.stringify(frames[0]) === JSON.stringify(preset('stand'))) {
+    loadChorus(clip, false);
+    return;
+  }
+  const canAppend = frames.length + clip.length <= maxFrames && end() + .25 + clip.at(-1).time <= maxTime;
+  $('dance-append').disabled = !canAppend;
+  $('dance-insert-hint').textContent = canAppend
+    ? '末尾に追加すると、今のコマを残せます。新しく開くと、タイムラインがサビのモーションに切り替わります。'
+    : 'タイムラインの上限を超えるため、末尾に追加できません。新しく開くと今のコマを置き換えます。';
+  danceDialog.returnValue = '';
+  danceDialog.showModal();
+};
+danceDialog.onclose = () => {
+  if (danceDialog.returnValue === 'append' || danceDialog.returnValue === 'replace') {
+    loadChorus(inmuChorus(), danceDialog.returnValue === 'append');
+  }
 };
 
 let lastFrame = 0;

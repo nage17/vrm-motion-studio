@@ -93,6 +93,7 @@
       <div class="timeline-top">
         <div><h2 id="timeline-title">タイムライン</h2><p class="hint" id="timeline-hint">今のポーズをコピーして次のコマを作れます。</p></div>
         <div class="timeline-actions">
+          <button id="inmu-chorus" class="outline" type="button">INMU KING サビ</button>
           <button id="play" type="button"><span aria-hidden="true">▶</span> 再生</button>
           <label class="loop"><input id="loop" type="checkbox" checked> ループ</label>
           <button id="add-frame" class="outline" type="button">＋ コマを追加</button>
@@ -112,6 +113,15 @@
       </div>
     </section>
   </main>
+  <dialog id="dance-dialog" aria-labelledby="dance-title">
+    <h2 id="dance-title">INMU KING サビ</h2>
+    <p class="hint" id="dance-insert-hint"></p>
+    <form method="dialog" class="timeline-actions">
+      <button id="dance-append" class="accent" value="append">末尾に追加</button>
+      <button value="replace">新しいモーションとして開く</button>
+      <button value="cancel" autofocus>キャンセル</button>
+    </form>
+  </dialog>
   <footer><p id="status" role="status">関節を選び、スライダーを動かしてみてください。</p><span>モデル本体は保存ファイルに含まれません</span></footer>
   <script type="module" src="/src/main.js"></script>
 </body>

@@ -9,6 +9,7 @@ import { applyHandShape, handShapes } from './gestures.js';
 import { exportFighters, fighterCount } from './fighter-export.js';
 import { strFromU8, unzipSync } from 'three/addons/libs/fflate.module.js';
 import { Vector3 } from 'three';
+import { inmuChorus } from './inmu-chorus.js';
 
 globalThis.FileReader ??= class {
   readAsArrayBuffer(blob) {
@@ -140,4 +141,20 @@ test('paired gestures refit to each fighter in a batch without changing the edit
     layouts.add(arm.join(','));
   }
   assert.ok(layouts.size > 1);
+});
+
+test('the chorus is an editable looping clip with alternating steps and a turn', async () => {
+  const frames = inmuChorus();
+  assert.equal(frames[0].time, 0);
+  assert.equal(frames.at(-1).time, 25.26);
+  assert.deepEqual(frames[0].angles, frames.at(-1).angles);
+  assert.deepEqual(readProject(serialize(frames)).frames, frames);
+  assert.ok(frames.some(frame => frame.angles.hips[1] === 180));
+  assert.notDeepEqual(frames[1].angles.leftUpperLeg, frames[3].angles.leftUpperLeg);
+  const rig = createDemo();
+  rig.rest = new Map(Object.entries(rig.bones).map(([name, bone]) => [name, bone.position]));
+  rig.hipHeight = rig.rest.get('hips').y;
+  const loader = new GLTFLoader().register(parser => new VRMAnimationLoaderPlugin(parser));
+  const gltf = await loader.parseAsync(await exportVrma(rig, frames), '');
+  assert.equal(gltf.userData.vrmAnimations[0].humanoidTracks.rotation.get('leftFoot').times.length, frames.length);
 });

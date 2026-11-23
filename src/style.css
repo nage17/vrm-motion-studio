@@ -49,6 +49,12 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; vertical-align: m
 .brand p, .hint { color: var(--muted); font-size: .82rem; line-height: 1.45; }
 .brand p { margin-top: 3px; }
 .file-actions, .views, .timeline-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+#dance-dialog {
+  width: min(480px, calc(100% - 30px)); padding: 18px; background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 10px;
+}
+#dance-dialog p { margin: 9px 0 16px; }
+#dance-dialog::backdrop { background: #080e19bd; }
 .studio {
   width: min(100%, 1616px); margin: auto; padding: 16px 20px 0;
   display: grid; gap: 12px; grid-template-columns: 218px minmax(0, 1fr) 234px;
