@@ -455,7 +455,7 @@ function loadChorus(clip, append) {
   chooseFrame(index);
   $('frames').children[index]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   startPlayback();
-  announce('INMU KINGのサビを再生中。停止してコマを選ぶと編集できます。');
+  announce('「謎の振り付け」を再生中。停止してコマを選ぶと編集できます。');
 }
 $('inmu-chorus').onclick = () => {
   const clip = inmuChorus();
@@ -466,7 +466,7 @@ $('inmu-chorus').onclick = () => {
   const canAppend = frames.length + clip.length <= maxFrames && end() + .25 + clip.at(-1).time <= maxTime;
   $('dance-append').disabled = !canAppend;
   $('dance-insert-hint').textContent = canAppend
-    ? '末尾に追加すると、今のコマを残せます。新しく開くと、タイムラインがサビのモーションに切り替わります。'
+    ? '末尾に追加すると、今のコマを残せます。新しく開くと、タイムラインが「謎の振り付け」に切り替わります。'
     : 'タイムラインの上限を超えるため、末尾に追加できません。新しく開くと今のコマを置き換えます。';
   danceDialog.returnValue = '';
   danceDialog.showModal();
